@@ -28,10 +28,10 @@
       color: var(--text);
     }
 
-    /* CSS NOTIFIKASI BARU */
+    /* --- CSS NOTIFIKASI --- */
     #notification-box {
       position: fixed;
-      top: -100px;
+      top: -120px;
       left: 50%;
       transform: translateX(-50%);
       width: 90%;
@@ -40,19 +40,24 @@
       color: white;
       padding: 15px 20px;
       border-radius: 15px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      box-shadow: 0 15px 30px rgba(0,0,0,0.3);
       z-index: 10000;
-      transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
       display: flex;
       align-items: center;
       gap: 12px;
-      border-left: 5px solid #3b82f6;
+      border-left: 6px solid #3b82f6;
     }
     #notification-box.show { top: 20px; }
-    .notif-icon { font-size: 20px; color: #3b82f6; }
+    .notif-icon { font-size: 24px; animation: bounce 2s infinite; }
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+        40% {transform: translateY(-5px);}
+        60% {transform: translateY(-3px);}
+    }
     .notif-content { flex: 1; }
-    .notif-title { font-size: 10px; font-weight: 700; text-transform: uppercase; opacity: 0.7; margin-bottom: 2px; }
-    .notif-text { font-size: 13px; font-weight: 500; line-height: 1.4; }
+    .notif-title { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #60a5fa; margin-bottom: 2px; letter-spacing: 1px; }
+    .notif-text { font-size: 13px; font-weight: 500; line-height: 1.4; color: #f8fafc; }
 
     .logo {
       width: 130px;
@@ -221,8 +226,8 @@
 
   <div id="errorModal" class="modal">
     <div class="modal-content">
-      <h2 id="modalTitle">Error!</h2>
-      <p id="modalMsg">Token yang Anda masukkan tidak valid.</p>
+      <h2 id="modalTitle">Token salah</h2>
+      <p id="modalMsg">Token yang Anda masukkan tidak valid atau sudah kadaluarsa silahkan hubungi panitia</p>
       <button class="close-btn" onclick="close_modal()">TUTUP</button>
     </div>
   </div>
@@ -236,19 +241,27 @@
     let daftarKode = {};
     let lastMessage = ""; 
 
-    // --- FITUR TERIMA PESAN (BARU) ---
+    // --- PERBAIKAN FITUR TERIMA PESAN ---
     async function checkNewMessage() {
       try {
-        // Menambahkan timestamp agar tidak terkena cache browser
-        const response = await fetch(`${API_MESSAGE_URL}?action=get&t=${new Date().getTime()}`);
+        // Mengambil data dengan cache-buster (timestamp) agar selalu mendapatkan pesan terbaru
+        const response = await fetch(`${API_MESSAGE_URL}?action=get&t=${new Date().getTime()}`, {
+            method: 'GET'
+        });
+        
+        if (!response.ok) return;
+
         const data = await response.json();
         
-        if (data.message && data.message !== lastMessage) {
-          showNotification(data.message);
-          lastMessage = data.message;
+        // Cek apakah ada pesan baru dan pastikan pesan tidak kosong
+        if (data && data.message && data.message.trim() !== "") {
+          if (data.message !== lastMessage) {
+            showNotification(data.message);
+            lastMessage = data.message;
+          }
         }
       } catch (e) {
-        console.log("Gagal mengambil pesan.");
+        console.warn("Koneksi pesan terputus, mencoba lagi...");
       }
     }
 
@@ -256,19 +269,26 @@
       const box = document.getElementById('notification-box');
       const text = document.getElementById('notif-message');
       
+      if(!box || !text) return;
+
       text.innerText = msg;
       box.classList.add('show');
 
-      // Sembunyikan otomatis setelah 10 detik
+      // Efek getar untuk perangkat mobile (jika didukung)
+      if ("vibrate" in navigator) {
+          navigator.vibrate(200);
+      }
+
+      // Sembunyikan otomatis setelah 12 detik agar siswa punya waktu membaca
       setTimeout(() => {
         box.classList.remove('show');
-      }, 10000);
+      }, 12000);
     }
 
-    // Jalankan pengecekan pesan setiap 10 detik
+    // Jalankan pengecekan pesan setiap 10 detik secara rutin
     setInterval(checkNewMessage, 10000);
 
-    // --- LOGIKA ASLI ---
+    // --- LOGIKA UTAMA ---
     async function loadDaftarKode() {
       try {
         const response = await fetch(`${API_URL}?t=${new Date().getTime()}`);
@@ -278,11 +298,11 @@
         console.log("Database berhasil dimuat.");
       } catch (err) {
         console.error(err);
-        showError("Koneksi Gagal", "Sedang perbaikan");
+        showError("Koneksi Gagal", "Gagal memuat data token. Periksa koneksi internet Anda.");
       } finally {
         document.getElementById('loading').style.display = 'none';
         document.getElementById('kodeInput').focus();
-        // Cek pesan pertama kali saat loading selesai
+        // Cek pesan segera setelah aplikasi siap
         checkNewMessage();
       }
     }
@@ -310,6 +330,7 @@
           userAgent: navigator.userAgent
         };
 
+        // Kirim log ke admin
         await fetch(API_LOG_URL, {
           method: 'POST',
           mode: 'no-cors',
@@ -317,7 +338,7 @@
           body: JSON.stringify(infoData)
         });
       } catch (e) {
-        console.warn("Log gagal.");
+        console.warn("Log gagal terkirim.");
       }
     }
 
@@ -338,6 +359,7 @@
 
       if (targetUrl) {
         await kirimDataLog(input);
+        // Efek transisi halus sebelum pindah ke soal
         document.body.style.transition = 'opacity 0.5s ease';
         document.body.style.opacity = '0';
         
@@ -368,7 +390,7 @@
       if (e.target.className === 'modal') close_modal();
     });
 
-    // Jalankan pemuatan data awal
+    // Mulai aplikasi
     loadDaftarKode();
   </script>
 </body>
