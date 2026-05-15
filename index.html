@@ -28,10 +28,10 @@
       color: var(--text);
     }
 
-    /* --- CSS NOTIFIKASI --- */
+    /* CSS NOTIFIKASI */
     #notification-box {
       position: fixed;
-      top: -120px;
+      top: -100px;
       left: 50%;
       transform: translateX(-50%);
       width: 90%;
@@ -40,24 +40,19 @@
       color: white;
       padding: 15px 20px;
       border-radius: 15px;
-      box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
       z-index: 10000;
-      transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
       display: flex;
       align-items: center;
       gap: 12px;
-      border-left: 6px solid #3b82f6;
+      border-left: 5px solid #3b82f6;
     }
     #notification-box.show { top: 20px; }
-    .notif-icon { font-size: 24px; animation: bounce 2s infinite; }
-    @keyframes bounce {
-        0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
-        40% {transform: translateY(-5px);}
-        60% {transform: translateY(-3px);}
-    }
+    .notif-icon { font-size: 20px; color: #3b82f6; }
     .notif-content { flex: 1; }
-    .notif-title { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #60a5fa; margin-bottom: 2px; letter-spacing: 1px; }
-    .notif-text { font-size: 13px; font-weight: 500; line-height: 1.4; color: #f8fafc; }
+    .notif-title { font-size: 10px; font-weight: 700; text-transform: uppercase; opacity: 0.7; margin-bottom: 2px; }
+    .notif-text { font-size: 13px; font-weight: 500; line-height: 1.4; }
 
     .logo {
       width: 130px;
@@ -191,7 +186,6 @@
 </head>
 <body>
 
-  <!-- ELEMENT NOTIFIKASI -->
   <div id="notification-box">
     <div class="notif-icon">📢</div>
     <div class="notif-content">
@@ -233,76 +227,45 @@
   </div>
 
   <script>
-    // URL API dari Google Apps Script
     const API_URL = 'https://script.google.com/macros/s/AKfycbwr2ImoBNG0nvkhkCx04nWJ6LFgkSVxS2vLaSffIJqZ0gNBtP9ua6MZVj_LFp5dm3WxTA/exec';
     const API_LOG_URL = 'https://script.google.com/macros/s/AKfycby7kuopc4d7sQ2ABBymNRJDwZa0m1DzWc32SR1e9uqxmhWRietmD4YuTKBwkRaSBuyo/exec';
-    const API_MESSAGE_URL = 'https://script.google.com/macros/s/AKfycbwmi3JArQsZEt7b0DPF3snZAj5V21L6N0LFhiOYS86rGopgHQEoVIvgkhBv0YZR1X5y/exec';
+    const API_MESSAGE_URL = 'https://script.google.com/macros/s/AKfycbxAaHgj4zyEw7fwsdyFOtjc_RyXcTL9-iXh5oFY6qLtoT30mgi8q3WJgOPkfWTbKDId/exec';
 
     let daftarKode = {};
     let lastMessage = ""; 
 
-    // --- PERBAIKAN FITUR TERIMA PESAN ---
     async function checkNewMessage() {
       try {
-        // Mengambil data dengan cache-buster (timestamp) agar selalu mendapatkan pesan terbaru
-        const response = await fetch(`${API_MESSAGE_URL}?action=get&t=${new Date().getTime()}`, {
-            method: 'GET'
-        });
-        
-        if (!response.ok) return;
-
+        const response = await fetch(`${API_MESSAGE_URL}?action=get&t=${new Date().getTime()}`);
         const data = await response.json();
-        
-        // Cek apakah ada pesan baru dan pastikan pesan tidak kosong
-        if (data && data.message && data.message.trim() !== "") {
-          if (data.message !== lastMessage) {
-            showNotification(data.message);
-            lastMessage = data.message;
-          }
+        if (data.message && data.message !== lastMessage) {
+          showNotification(data.message);
+          lastMessage = data.message;
         }
-      } catch (e) {
-        console.warn("Koneksi pesan terputus, mencoba lagi...");
-      }
+      } catch (e) { console.log("Gagal mengambil pesan."); }
     }
 
     function showNotification(msg) {
       const box = document.getElementById('notification-box');
       const text = document.getElementById('notif-message');
-      
-      if(!box || !text) return;
-
       text.innerText = msg;
       box.classList.add('show');
-
-      // Efek getar untuk perangkat mobile (jika didukung)
-      if ("vibrate" in navigator) {
-          navigator.vibrate(200);
-      }
-
-      // Sembunyikan otomatis setelah 12 detik agar siswa punya waktu membaca
-      setTimeout(() => {
-        box.classList.remove('show');
-      }, 12000);
+      setTimeout(() => { box.classList.remove('show'); }, 10000);
     }
 
-    // Jalankan pengecekan pesan setiap 10 detik secara rutin
     setInterval(checkNewMessage, 10000);
 
-    // --- LOGIKA UTAMA ---
     async function loadDaftarKode() {
       try {
         const response = await fetch(`${API_URL}?t=${new Date().getTime()}`);
         if (!response.ok) throw new Error('Database tidak merespon');
-        
         daftarKode = await response.json();
-        console.log("Database berhasil dimuat.");
       } catch (err) {
         console.error(err);
-        showError("Koneksi Gagal", "Gagal memuat data token. Periksa koneksi internet Anda.");
+        showError("Koneksi Gagal", "Sedang perbaikan");
       } finally {
         document.getElementById('loading').style.display = 'none';
         document.getElementById('kodeInput').focus();
-        // Cek pesan segera setelah aplikasi siap
         checkNewMessage();
       }
     }
@@ -314,32 +277,23 @@
           const ipRes = await fetch('https://api.ipify.org?format=json');
           const ipData = await ipRes.json();
           realIp = ipData.ip;
-        } catch (e) { console.log("Gagal deteksi IP"); }
-
-        let deviceModel = navigator.platform;
-        if (navigator.userAgentData) {
-          const highEntropy = await navigator.userAgentData.getHighEntropyValues(["model", "platform", "platformVersion"]);
-          deviceModel = (highEntropy.platform + " " + (highEntropy.model || "")).trim();
-        }
+        } catch (e) { }
 
         const infoData = {
           sesi: tokenTerpakai,
-          device: deviceModel,
+          device: navigator.platform,
           browser: navigator.userAgent.split(') ')[1] || "Mobile Browser",
           ip: realIp,
           userAgent: navigator.userAgent
         };
 
-        // Kirim log ke admin
         await fetch(API_LOG_URL, {
           method: 'POST',
           mode: 'no-cors',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(infoData)
         });
-      } catch (e) {
-        console.warn("Log gagal terkirim.");
-      }
+      } catch (e) { console.warn("Log gagal."); }
     }
 
     async function verifikasiKode() {
@@ -359,15 +313,12 @@
 
       if (targetUrl) {
         await kirimDataLog(input);
-        // Efek transisi halus sebelum pindah ke soal
         document.body.style.transition = 'opacity 0.5s ease';
         document.body.style.opacity = '0';
-        
-        setTimeout(() => {
-          window.location.href = targetUrl;
-        }, 500);
+        setTimeout(() => { window.location.href = targetUrl; }, 500);
       } else {
-        showError("Token Salah", "Token yang Anda masukkan tidak terdaftar.");
+        // Jika token salah, tampilkan modal kesalahan
+        showError("Token Salah", "Token yang Anda masukkan tidak terdaftar. Halaman akan dimuat ulang untuk memperbarui database.");
       }
     }
 
@@ -377,20 +328,22 @@
       document.getElementById('errorModal').style.display = 'flex';
     }
 
+    // MODIFIKASI: Fungsi tutup modal sekarang memicu reload halaman
     function close_modal() {
       document.getElementById('errorModal').style.display = 'none';
-      document.getElementById('kodeInput').focus();
+      // Memuat ulang halaman untuk mengambil token terbaru dari database
+      window.location.reload(); 
     }
 
     document.getElementById('kodeInput').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') verifikasiKode();
     });
 
-    window.addEventListener('click', (e) => {
+    // Menghilangkan klik di luar modal agar siswa wajib menekan tombol TUTUP (reload)
+    /* window.addEventListener('click', (e) => {
       if (e.target.className === 'modal') close_modal();
-    });
+    }); */
 
-    // Mulai aplikasi
     loadDaftarKode();
   </script>
 </body>
