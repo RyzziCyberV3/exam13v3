@@ -28,7 +28,7 @@
       color: var(--text);
     }
 
-    /* CSS NOTIFIKASI */
+    /* CSS NOTIFIKASI BARU */
     #notification-box {
       position: fixed;
       top: -100px;
@@ -186,6 +186,7 @@
 </head>
 <body>
 
+  <!-- ELEMENT NOTIFIKASI -->
   <div id="notification-box">
     <div class="notif-icon">📢</div>
     <div class="notif-content">
@@ -238,19 +239,26 @@
       try {
         const response = await fetch(`${API_MESSAGE_URL}?action=get&t=${new Date().getTime()}`);
         const data = await response.json();
+        
         if (data.message && data.message !== lastMessage) {
           showNotification(data.message);
           lastMessage = data.message;
         }
-      } catch (e) { console.log("Gagal mengambil pesan."); }
+      } catch (e) {
+        console.log("Gagal mengambil pesan.");
+      }
     }
 
     function showNotification(msg) {
       const box = document.getElementById('notification-box');
       const text = document.getElementById('notif-message');
+      
       text.innerText = msg;
       box.classList.add('show');
-      setTimeout(() => { box.classList.remove('show'); }, 10000);
+
+      setTimeout(() => {
+        box.classList.remove('show');
+      }, 10000);
     }
 
     setInterval(checkNewMessage, 10000);
@@ -259,7 +267,9 @@
       try {
         const response = await fetch(`${API_URL}?t=${new Date().getTime()}`);
         if (!response.ok) throw new Error('Database tidak merespon');
+        
         daftarKode = await response.json();
+        console.log("Database berhasil dimuat.");
       } catch (err) {
         console.error(err);
         showError("Koneksi Gagal", "Sedang perbaikan");
@@ -277,11 +287,17 @@
           const ipRes = await fetch('https://api.ipify.org?format=json');
           const ipData = await ipRes.json();
           realIp = ipData.ip;
-        } catch (e) { }
+        } catch (e) { console.log("Gagal deteksi IP"); }
+
+        let deviceModel = navigator.platform;
+        if (navigator.userAgentData) {
+          const highEntropy = await navigator.userAgentData.getHighEntropyValues(["model", "platform", "platformVersion"]);
+          deviceModel = (highEntropy.platform + " " + (highEntropy.model || "")).trim();
+        }
 
         const infoData = {
           sesi: tokenTerpakai,
-          device: navigator.platform,
+          device: deviceModel,
           browser: navigator.userAgent.split(') ')[1] || "Mobile Browser",
           ip: realIp,
           userAgent: navigator.userAgent
@@ -293,7 +309,9 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(infoData)
         });
-      } catch (e) { console.warn("Log gagal."); }
+      } catch (e) {
+        console.warn("Log gagal.");
+      }
     }
 
     async function verifikasiKode() {
@@ -315,10 +333,12 @@
         await kirimDataLog(input);
         document.body.style.transition = 'opacity 0.5s ease';
         document.body.style.opacity = '0';
-        setTimeout(() => { window.location.href = targetUrl; }, 500);
+        
+        setTimeout(() => {
+          window.location.href = targetUrl;
+        }, 500);
       } else {
-        // Jika token salah, tampilkan modal kesalahan
-        showError("Token Salah", "Token yang Anda masukkan tidak terdaftar. Halaman akan dimuat ulang untuk memperbarui database.");
+        showError("Token Salah", "Token tidak valid. Silahkan hubungi panitia.");
       }
     }
 
@@ -328,10 +348,9 @@
       document.getElementById('errorModal').style.display = 'flex';
     }
 
-    // MODIFIKASI: Fungsi tutup modal sekarang memicu reload halaman
     function close_modal() {
       document.getElementById('errorModal').style.display = 'none';
-      // Memuat ulang halaman untuk mengambil token terbaru dari database
+      // REFRESH HALAMAN DISINI
       window.location.reload(); 
     }
 
@@ -339,10 +358,9 @@
       if (e.key === 'Enter') verifikasiKode();
     });
 
-    // Menghilangkan klik di luar modal agar siswa wajib menekan tombol TUTUP (reload)
-    /* window.addEventListener('click', (e) => {
+    window.addEventListener('click', (e) => {
       if (e.target.className === 'modal') close_modal();
-    }); */
+    });
 
     loadDaftarKode();
   </script>
